@@ -125,24 +125,28 @@ class SearchViewSet(viewsets.ModelViewSet) :
             found = found.union(curr_set)
         id_pos_dict = get_id_pos_dict()
         idf_dict = get_word_df_dict()
-        with open('db.json') as f :
-            for doc_id in found :
-                seek_pos = id_pos_dict.get(str(doc_id), -1)
-                if seek_pos == -1 :
-                    continue
-                f.seek(seek_pos)
-                to_append = json.loads(f.readline())
-                if match_phrase :
-                    if ' '.join(words) in to_append['data'] :
+        try :
+            with open('db.json') as f :
+                for doc_id in found :
+                    seek_pos = id_pos_dict.get(str(doc_id), -1)
+                    if seek_pos == -1 :
+                        continue
+                    f.seek(seek_pos)
+                    to_append = json.loads(f.readline())
+                    if match_phrase :
+                        if ' '.join(words) in to_append['data'] :
+                            resp.append(to_append)
+                            to_append['score'] = get_score(to_append, words, idf_dict)
+                    else :
                         resp.append(to_append)
                         to_append['score'] = get_score(to_append, words, idf_dict)
-                else :
-                    resp.append(to_append)
-                    to_append['score'] = get_score(to_append, words, idf_dict)
-                    
+                        
 
 
-        resp = sorted(resp, key=lambda r : r['score'], reverse=True)
-        d = self.get_serializer(resp, many=True)
-        return Response(d.data, status=status.HTTP_200_OK)
+            resp = sorted(resp, key=lambda r : r['score'], reverse=True)
+            d = self.get_serializer(resp, many=True)
+            return Response(d.data, status=status.HTTP_200_OK)
+
+        except IOError :
+            return Response("Nothing is indexed till now", status=status.HTTP_400_BAD_REQUEST)
 
